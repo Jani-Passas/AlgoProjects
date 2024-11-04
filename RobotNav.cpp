@@ -10,7 +10,8 @@
 using namespace std;
 
 //Simple backtracking algorithm 
-bool findPath(vector<vector<int> > &maze, int x, int y, vector<vector<int> > &finalPath){
+extern "C" {
+    bool findPath(vector<vector<int> > &maze, int x, int y, vector<vector<int> > &finalPath){
     int rows = maze.size();
     int columns = maze[0].size();
     // cout << "Rows is given as: " << rows << endl;
@@ -54,6 +55,7 @@ void printPath(vector<vector<int> > &finalPath){
         }
         cout << endl;
     }
+}
 }
 
 int main(){

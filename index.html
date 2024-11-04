@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Autonomous Robot Navigation</title>
+  <style>
+    .maze-container { display: grid; gap: 5px; }
+    .cell { width: 40px; height: 40px; border: 1px solid #333; display: flex; align-items: center; justify-content: center; }
+    .wall { background-color: #333; }
+    .path { background-color: #4CAF50; }
+    .solution { background-color: #FFD700; }
+  </style>
+</head>
+<body>
+  <h1>RobotNav</h1>
+  <div class="maze-container" id="maze"></div>
+  <button onclick="solveMaze()">Find Path</button>
+
+  <script src="RobotNav.js"></script>
+  <script>
+    const mazeData = [
+      [1, 0, 1, 1, 1],
+      [1, 1, 0, 1, 1],
+      [1, 0, 1, 0, 1],
+      [1, 1, 1, 0, 1]
+    ];
+    const rows = mazeData.length;
+    const cols = mazeData[0].length;
+    const mazeContainer = document.getElementById('maze');
+
+    // Initialize the maze grid display
+    function renderMaze() {
+      mazeContainer.style.gridTemplateColumns = `repeat(${cols}, 40px)`;
+      mazeContainer.innerHTML = '';
+      mazeData.forEach(row => {
+        row.forEach(cell => {
+          const div = document.createElement('div');
+          div.classList.add('cell', cell === 1 ? 'path' : 'wall');
+          mazeContainer.appendChild(div);
+        });
+      });
+    }
+
+    renderMaze();
+
+    // Initialize WebAssembly functions
+    let findPathWasm, printPathWasm;
+
+    Module.onRuntimeInitialized = async () => {
+      findPathWasm = Module.cwrap('findPath', 'boolean', ['array', 'number', 'number', 'array']);
+      printPathWasm = Module.cwrap('printPath', null, ['array', 'number', 'number']);
+    };
+
+    function solveMaze() {
+      const flatMazeData = mazeData.flat();
+      const finalPath = new Array(rows * cols).fill(0);
+
+      const pathFound = findPathWasm(flatMazeData, rows, cols, finalPath);
+
+      if (pathFound) {
+        for (let i = 0; i < rows; i++) {
+          for (let j = 0; j < cols; j++) {
+            if (finalPath[i * cols + j] === 1) {
+              mazeContainer.children[i * cols + j].classList.add('solution');
+            }
+          }
+        }
+      } else {
+        alert("No path found!");
+      }
+    }
+  </script>
+</body>
+</html>
