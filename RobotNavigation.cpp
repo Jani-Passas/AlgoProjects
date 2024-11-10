@@ -5,7 +5,7 @@
 
 #include <iostream>
 #include <vector>
-#include <climits>
+#include <fstream>
 using namespace std;
 
 struct path{
@@ -83,6 +83,24 @@ void printPath(vector<vector<int>>& finalPath){
         cout << endl;
     }
 }
+void pathToCSV(vector<vector<int>> pathTaken, string filename){
+    ofstream outFile(filename);
+    if(!outFile.is_open()){
+        cout << "\n ERROR: Not able to open file " << filename <<endl;
+        return;
+    }
+    for(size_t i=0; i<pathTaken.size(); i++){
+        for(size_t j=0; j<pathTaken[i].size(); j++){
+            outFile << pathTaken[i][j];
+            if(j<pathTaken[i].size()-1){
+                outFile << ", ";
+            }
+        }
+        outFile << "\n";
+    }
+    outFile.close();
+    cout << "Data saved into CSV file and written to: " << filename << endl;
+}
 
 int main(){
     //Maze to traverse, 0s are obstacles
@@ -109,6 +127,7 @@ int main(){
         cout << "Minimum path weight: " << minPath.totalWieght << endl;
         cout << "Path grid given as: \n";
         printPath(minPath.pathTaken);
+        pathToCSV(minPath.pathTaken, "Test1.csv");
     }
     return 0;
 }
