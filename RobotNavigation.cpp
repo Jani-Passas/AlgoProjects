@@ -14,13 +14,20 @@ struct path{
 };
 
 //
-void findAllPaths(vector<vector<int>>& maze, int x, int y, 
-    vector<vector<int>>& currentPath, vector<path>& allPaths, int curWeight){
+void findAllPaths(vector<vector<int>>& maze, int x, int y, vector<vector<int>>& currentPath, 
+    vector<path>& allPaths, int curWeight, int endX, int endY){  
     int rows = maze.size();
     int columns = maze[0].size();
 
     //Check if destination reached
-    if(x == rows-1 && y == columns-1 && maze[x][y] > 0){
+    // if(x == rows-1 && y == columns-1 && maze[x][y] > 0){
+    //     currentPath[x][y] = 1;
+    //     allPaths.push_back({curWeight + maze[x][y], currentPath});
+    //     currentPath[x][y] = 0;
+    //     return;
+    // }
+
+    if (x == endX && y == endY && maze[x][y] > 0) {
         currentPath[x][y] = 1;
         allPaths.push_back({curWeight + maze[x][y], currentPath});
         currentPath[x][y] = 0;
@@ -37,16 +44,16 @@ void findAllPaths(vector<vector<int>>& maze, int x, int y,
 
     //Go in all four directions to explore possible paths
     if(x+1 < rows){//Move down
-        findAllPaths(maze, x+1, y, currentPath, allPaths, curWeight + weight);
+        findAllPaths(maze, x+1, y, currentPath, allPaths, curWeight + weight, endX, endY);
     }
     if(y+1 < columns){//Move right
-        findAllPaths(maze, x, y+1, currentPath, allPaths, curWeight + weight);
+        findAllPaths(maze, x, y+1, currentPath, allPaths, curWeight + weight, endX, endY);
     }
     if(x-1 < rows){//Move up
-        findAllPaths(maze, x-1, y, currentPath, allPaths, curWeight + weight);
+        findAllPaths(maze, x-1, y, currentPath, allPaths, curWeight + weight, endX, endY);
     }
     if(y-1 < columns){//Move left
-        findAllPaths(maze, x, y-1, currentPath, allPaths, curWeight + weight);
+        findAllPaths(maze, x, y-1, currentPath, allPaths, curWeight + weight, endX, endY);
     }
     //Backtrack and reset to current weight
     currentPath[x][y] = 0;
@@ -68,7 +75,7 @@ path findMinPath(const vector<path>& allPaths){
 //Print the path out to terminal
 void printPath(vector<vector<int>>& finalPath){
     for(size_t i=0; i<finalPath.size(); i++){
-        for(size_t j=0; j<finalPath[0].size(); j++){
+        for(size_t j=0; j<finalPath[i].size(); j++){
             if(finalPath[i][j]>0){
                 cout << "1 "; //For now just printing 1s for the path taken
             }
@@ -105,18 +112,56 @@ void pathToCSV(vector<vector<int>> pathTaken, string filename){
 int main(){
     //Maze to traverse, 0s are obstacles
     vector<vector<int>> maze = {
-        {1, 0, 2, 3, 1},
-        {2, 3, 1, 0, 2},
-        {0, 2, 6, 4, 3},
-        {1, 7, 2, 0, 1}
+        {1, 0, 2, 3, 1, 3, 5, 2, 2, 1},
+        {2, 3, 1, 0, 2, 8, 2, 5, 3, 2},
+        {0, 2, 6, 4, 3, 4, 3, 2, 5, 1},
+        // {1, 7, 2, 0, 1, 6, 4, 2, 1, 3},
+        // {1, 0, 2, 3, 1, 0, 0, 2, 3, 2},
+        {2, 3, 1, 0, 2, 1, 7, 2, 6, 1},
+        {0, 2, 6, 4, 3, 0, 2, 2, 4, 5},
+        {1, 7, 2, 0, 1, 1, 5, 2, 1, 0}
     };
+
+    for(size_t i=0; i<maze.size(); i++){
+        for(size_t j=0; j<maze[i].size(); j++){
+            cout << maze[i][j] << " ";
+        }
+        cout << endl;
+    }
+    cout << endl;
     int rows = maze.size();
     int columns = maze[0].size();
+    cout << "Boundaries for the input are " << rows-1 << " and " << columns-1 << endl;
+
+
+    //Get user inputs
+    int startX, startY, endX, endY;
+    cout << "Please enter start coordinates (x y): ";
+    cin >> startX >> startY;
+    cout << "Please enter end coordinates (x y): ";
+    cin >> endX >> endY;
+
+
+    if(startX < 0 || startX >= rows || startY < 0 || startY >= columns){
+        cout << "Invalid start point based on boundaries! Please pick between:";
+        cout << rows-1 << ", " << columns-1;        return -1;
+    }
+
+    if(endX < 0 || endX >= rows || endY < 0 || endY >= columns){
+        cout << "Invalid end point based on boundaries! Please pick between:";
+        cout << rows-1 << ", " << columns-1;
+        return -1;
+    }
+
+    if(maze[startX][startY] == 0 || maze[endX][endY] == 0){
+        cout << "Invalid start or end point based on values!!";
+        return -1;
+    }
 
     vector<path> allPaths;//store all possible paths
     vector<vector<int>> curPath(rows, vector<int>(columns,0));//creates a 2D array of all zeroes to track cur path
 
-    findAllPaths(maze, 0, 0, curPath, allPaths, 0);
+    findAllPaths(maze, startX, startY, curPath, allPaths, 0, endX, endY);
 
     if(allPaths.empty()){
         cout << "No path found!" << endl;
