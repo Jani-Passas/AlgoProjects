@@ -103,3 +103,137 @@
     </script>
 </body>
 </html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Robot Navigator</title>
+    <style>
+        #gridContainer {
+            display: grid;
+            grid-template-columns: repeat(5, 50px);
+            grid-template-rows: repeat(4, 50px);
+            gap: 5px;
+        }
+        .grid-cell {
+            width: 50px;
+            height: 50px;
+            border: 1px solid black;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+        }
+        .path-cell {
+            background-color: yellow;
+        }
+        .obstacle-cell {
+            background-color: grey;
+        }
+    </style>
+</head>
+<body>
+    <h1>Robot Navigator</h1>
+    <button id="generatePath">Generate Shortest Path</button>
+    <div id="gridContainer"></div>
+
+    <script>
+        const grid = [
+            [0, 0, 1, 0, 0],
+            [0, 1, 0, 0, 0],
+            [0, 0, 0, 1, 0],
+            [0, 1, 0, 0, 0]
+        ];
+
+        function renderGrid(path = []) {
+            const gridContainer = document.getElementById('gridContainer');
+            gridContainer.innerHTML = ''; // Clear existing grid
+            
+            for (let i = 0; i < grid.length; i++) {
+                for (let j = 0; j < grid[i].length; j++) {
+                    const cell = document.createElement('div');
+                    cell.classList.add('grid-cell');
+
+                    if (grid[i][j] === 1) {
+                        cell.classList.add('obstacle-cell');
+                    }
+
+                    path.forEach(([x, y]) => {
+                        if (x === i && y === j) {
+                            cell.classList.add('path-cell');
+                        }
+                    });
+
+                    cell.addEventListener('click', () => {
+                        if (grid[i][j] === 1) {
+                            grid[i][j] = 0;
+                            cell.classList.remove('obstacle-cell');
+                        } else {
+                            grid[i][j] = 1;
+                            cell.classList.add('obstacle-cell');
+                        }
+                    });
+
+                    gridContainer.appendChild(cell);
+                }
+            }
+        }
+
+        function isSafe(x, y, grid, visited) {
+            return x >= 0 && x < grid.length && y >= 0 && y < grid[0].length && grid[x][y] === 0 && !visited[x][y];
+        }
+
+        function findShortestPath(grid) {
+            const rows = grid.length;
+            const cols = grid[0].length;
+            const directions = [[-1, 0], [0, 1], [1, 0], [0, -1]];
+            const path = [];
+            let found = false;
+
+            function backtrack(x, y, currentPath, visited) {
+                if (x === rows - 1 && y === cols - 1) {
+                    if (!found || currentPath.length < path.length) {
+                        path.length = 0;
+                        path.push(...currentPath);
+                        found = true;
+                    }
+                    return;
+                }
+
+                visited[x][y] = true;
+
+                for (const [dx, dy] of directions) {
+                    const newX = x + dx;
+                    const newY = y + dy;
+                    if (isSafe(newX, newY, grid, visited)) {
+                        currentPath.push([newX, newY]);
+                        backtrack(newX, newY, currentPath, visited);
+                        currentPath.pop();
+                    }
+                }
+
+                visited[x][y] = false;
+            }
+
+            const visited = Array.from({ length: rows }, () => Array(cols).fill(false));
+            if (grid[0][0] === 0) {
+                backtrack(0, 0, [[0, 0]], visited);
+            }
+            return path;
+        }
+
+        document.getElementById('generatePath').addEventListener('click', () => {
+            const path = findShortestPath(grid);
+            renderGrid(path);
+            if (path.length === 0) {
+                alert('No path found!');
+            }
+        });
+
+        // Initial render without path
+        renderGrid();
+    </script>
+</body>
+</html>
