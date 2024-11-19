@@ -1,4 +1,4 @@
-//Integrated Version 3 of code
+//Final integrated version of code (v4)
 //This uses backtacking as well as greedy
 //It finds all possible routes before picking the one with the lowest weight
 //Or it prioritizes lowest weights in a greedy method
@@ -24,7 +24,7 @@ struct Node{ //
 bool isValid(int x, int y, vector<vector<int>>& maze){
     int rows = maze.size();
     int cols = maze[0].size();
-    return (x >= 0 && x < rows && y >= 0 && y < cols && maze[x][y] > 0);
+    return (x >= 0 && x < rows && y >= 0 && y < cols && maze[x][y] > 0 || maze[x][y] == -1);
 }
 
 //
@@ -33,38 +33,44 @@ void findAllPaths(vector<vector<int>>& maze, int x, int y, vector<vector<int>>& 
     int rows = maze.size();
     int columns = maze[0].size();
 
-    if (x == endX && y == endY && maze[x][y] > 0) {
+    // Out of bounds or invalid cell check
+    if(x < 0 || x >= rows || y < 0 || y >= columns || 
+       (maze[x][y] < 0 && maze[x][y] != -1)) return;
+
+    // Reached destination
+    if (x == endX && y == endY) {
         currentPath[x][y] = 1;
         allPaths.push_back({curWeight + maze[x][y], currentPath});
         currentPath[x][y] = 0;
         return;
     }
 
-    //Boundary checking to prevent seg faults
-    if(x < 0 || x >= rows || y < 0 || y >= columns || maze[x][y] <= 0) return;
+    // Prevent revisiting
+    if(currentPath[x][y] == 1) return;
 
-    //Mark the current cell in the path to be taken
+    // Mark current cell
     currentPath[x][y] = 1;
     int weight = maze[x][y];
-    maze[x][y] = -1; //mark this cell as visited by setting to -1
+    int originalWeight = maze[x][y];
 
-    //Go in all four directions to explore possible paths
-    if(x+1 < rows){//Move down
-        findAllPaths(maze, x+1, y, currentPath, allPaths, curWeight + weight, endX, endY);
+    // Move in four directions with bounds check
+    vector<pair<int, int>> directions = {{1,0}, {0,1}, {-1,0}, {0,-1}};
+    for(const auto& [dx, dy] : directions) {
+        int newX = x + dx;
+        int newY = y + dy;
+
+        // Check if new position is valid
+        if(newX >= 0 && newX < rows && newY >= 0 && newY < columns) {
+            findAllPaths(maze, newX, newY, currentPath, allPaths, 
+                         curWeight + (weight == -1 ? 1 : weight), endX, endY);
+        }
     }
-    if(y+1 < columns){//Move right
-        findAllPaths(maze, x, y+1, currentPath, allPaths, curWeight + weight, endX, endY);
-    }
-    if(x-1 < rows){//Move up
-        findAllPaths(maze, x-1, y, currentPath, allPaths, curWeight + weight, endX, endY);
-    }
-    if(y-1 < columns){//Move left
-        findAllPaths(maze, x, y-1, currentPath, allPaths, curWeight + weight, endX, endY);
-    }
-    //Backtrack and reset to current weight
+
+    // Backtrack
     currentPath[x][y] = 0;
-    maze[x][y] = weight;
+    maze[x][y] = originalWeight;
 }
+
 
 //Find path with minimum weight
 path findMinPath(const vector<path>& allPaths){
@@ -79,65 +85,105 @@ path findMinPath(const vector<path>& allPaths){
 }
 
 //Greeedy (prim's MST-inspired) path
-int primsShortestPath(vector<vector<int>>& maze, int startX, int startY, int endX, int endY, vector<vector<int>>& greedyPath){
+int primsShortestPath(vector<vector<int>>& maze, int startX, int startY, int endX, int endY, vector<vector<int>>& greedyPath, int fuel, int maxFuel){
     int rows = maze.size();
     int cols = maze[0].size();
     vector<vector<bool>> visited(rows, vector<bool>(cols, false));
-    vector<vector<pair<int, int>>> parent(rows, vector<pair<int, int>>(cols, {-1, -1}));//track the parent cells
-    greedyPath.assign(rows, vector<int>(cols, 0));//intiializes paths to all 0s
+    vector<vector<pair<int, int>>> parent(rows, vector<pair<int, int>>(cols, {-1, -1}));
+    greedyPath.assign(rows, vector<int>(cols, 0));
+    bool fuelExhaustion = false;
 
-    //Uses a min-heap to prioritize the next cell with the lowest weight (greedy)
     priority_queue<Node, vector<Node>, greater<Node>> pq;
-    pq.push({startX, startY, maze[startX][startY]});
+    
+    // Treat charger as having a minimal cost of 1
+    int startWeight = (maze[startX][startY] == -1) ? 1 : maze[startX][startY];
+    pq.push({startX, startY, startWeight});
     visited[startX][startY] = true;
 
-    //Vectors for moving up, down, right and left
     vector<pair<int, int>> directions = {{1,0}, {0,1}, {-1, 0}, {0,-1}};
 
     while(!pq.empty()){
         Node current = pq.top();
         pq.pop();
 
-        //If target reached the make the path and exit
+        //Check the adjacent cells for a charger
+        bool adjacentCharger = false;
+        for(const auto& [dx, dy] : directions) {
+            int checkX = current.x + dx;
+            int checkY = current.y + dy;
+            
+            if(checkX >= 0 && checkX < rows && checkY >= 0 && checkY < cols && 
+               maze[checkX][checkY] == -1) {
+                adjacentCharger = true;
+                break;
+            }
+        }
+        //Set fuel back to maxFuel if there is an adjacent charger
+        if(adjacentCharger){
+            fuel = maxFuel;
+        }
+
+        //Reduce fuel and check if fuel has reached zero
+        int cellWeight = (maze[current.x][current.y] == -1) ? 1 : maze[current.x][current.y];
+        if (fuel < cellWeight) {
+            fuelExhaustion = true;
+            return -1;
+        }
+        fuel -= cellWeight;
+
+        // If target reached, trace back the path
         if(current.x == endX && current.y == endY){
-            //Use parent array to trace back the path traveled
             int x_pos = endX;
             int y_pos = endY;
             while(x_pos != -1 && y_pos != -1){
-                greedyPath[x_pos][y_pos] = 1;
+                // Mark charger cells differently
+                if(maze[x_pos][y_pos] == -1){
+                    greedyPath[x_pos][y_pos] = -2; //Set to -2 to mark as C
+                }else{
+                    greedyPath[x_pos][y_pos] = 1; //change to cell weight if you don't want 1s
+                }
                 tie(x_pos, y_pos) = parent[x_pos][y_pos];
             }
             return current.weight;
         }
 
-        //Explore neighboring cells and push into priority queue
+        // Explore neighboring cells
         for(const auto& [x_move, y_move] : directions){
             int newX = current.x + x_move;
             int newY = current.y + y_move;
 
-            if(isValid(newX, newY, maze) && !visited[newX][newY]){
+            // Robust validity check
+            if(newX >= 0 && newX < rows && newY >= 0 && newY < cols && 
+               (maze[newX][newY] > 0 || maze[newX][newY] == -1) && 
+               !visited[newX][newY]){
+                
+                // Treat charger as having a minimal cost of 1
+                int newWeight = (maze[newX][newY] == -1) ? 1 : maze[newX][newY];
+                
                 visited[newX][newY] = true;
                 parent[newX][newY] = {current.x, current.y};
-                pq.push({newX, newY, current.weight + maze[newX][newY]});
+                pq.push({newX, newY, current.weight + newWeight});
             }
         }
     }
-    return -1; //return -1 if no path is found :(
+    return -1; // No path found
 }
 
 //Print the path out to terminal
-void printPath(vector<vector<int>>& finalPath){
+void printPath(vector<vector<int>>& finalPath, vector<vector<int>>& maze){
     for(size_t i=0; i<finalPath.size(); i++){
         for(size_t j=0; j<finalPath[i].size(); j++){
             if(finalPath[i][j]>0){
                 cout << "1 "; //For now just printing 1s for the path taken
             }
-            else if(finalPath[i][j] == 0){
-                cout << "0 ";
+            else if(finalPath[i][j] == -1 || maze[i][j] == -1){
+                cout << "c ";
+            }
+            else if(finalPath[i][j] == -2){
+                cout << "C ";
             }
             else{
-                cout << "THERE IS A NEGATIVE IN THE FINAL PATH?";
-                return;
+                cout << "# ";
             }
         }
         cout << endl;
@@ -165,18 +211,18 @@ void pathToCSV(vector<vector<int>> pathTaken, string filename){
 int main(){
     //Maze to traverse, 0s are obstacles
     vector<vector<int>> maze = {
-        {1, 0, 2, 3, 1, 3, 5, 2, 2, 1, 4, 6, 1 ,3},
+        {1, 0, 2, 3,-1, 3, 5, 2, 2, 1, 4, 6, 1 ,3},
         {2, 3, 1, 0, 2, 8, 2, 5, 3, 2, 3, 2, 0, 2},
-        {0, 2, 6, 4, 3, 4, 3, 2, 5, 1, 3, 2, 3, 0},
+        {0, 2, 6, 4, 3, 4, 3, 2, 5,-1, 3, 2, 3, 0},
         {1, 7, 2, 0, 1, 6, 4, 2, 1, 3, 6, 2, 5, 3},
         {1, 0, 2, 3, 1, 0, 0, 2, 3, 2, 3, 1, 3, 5},
-        {2, 3, 1, 0, 6, 1, 7, 2, 6, 1, 4, 5, 2, 2},
+        {2, 3, 1, 0, 6,-1, 7, 2, 6, 1, 4, 5, 2, 2},
         {0, 2, 6, 4, 3, 0, 2, 2, 4, 5, 4, 2, 3, 1},
         {1, 7, 2, 0, 1, 1, 5, 2, 1, 0, 0, 0, 2, 1},
         {2, 3, 1, 0, 2, 8, 2, 5, 3, 2, 0, 1, 1, 3},
         {0, 2, 6, 4, 3, 4, 3, 2, 5, 1, 2, 3, 4, 5},
-        {1, 7, 2, 0, 1, 6, 4, 2, 1, 3, 4, 2, 1, 7},
-        {1, 0, 2, 3, 1, 0, 0, 2, 3, 2, 4, 2, 3, 2},
+        {1, 7, 2,-1, 1, 6, 4, 2, 1, 3, 4, 2, 1, 7},
+        {1,-1, 2, 0, 1, 0,-1, 2, 3, 2, 4, 2, 3, 2},
         {2, 3, 1, 0, 2, 1, 7, 2, 6, 1, 3, 3, 2, 1},
         {0, 2, 6, 4, 3, 0, 2, 2, 4, 5, 0, 0, 2, 1}
     };
@@ -194,11 +240,16 @@ int main(){
 
 
     //Get user inputs
-    int startX, startY, endX, endY, userSelect;
+    int startX, startY, endX, endY, userSelect, fuel, maxFuel;
     cout << "Please enter start coordinates (x y): ";
     cin >> startX >> startY;
     cout << "Please enter end coordinates (x y): ";
     cin >> endX >> endY;
+    cout << "Please enter starting fuel: ";
+    cin >> fuel;
+    cout << "Please enter max fuel capacity: ";
+    cin >> maxFuel;
+
     if(startX < 0 || startX >= rows || startY < 0 || startY >= columns){
         cout << "Invalid start point based on boundaries! Please pick between:";
         cout << rows-1 << ", " << columns-1;        
@@ -217,6 +268,7 @@ int main(){
 
     cout << "Please enter 1 for dynamic approach and 2 for greedy approach: ";
     cin >> userSelect;
+
     if(userSelect == 1){
         vector<path> allPaths;//store all possible paths (dynamic)
         vector<vector<int>> curPath(rows, vector<int>(columns,0));//creates a 2D array of all zeroes to track cur path
@@ -231,22 +283,28 @@ int main(){
             path minPath = findMinPath(allPaths);
             cout << "Minimum path weight: " << minPath.totalWieght << endl;
             cout << "Path grid given as: \n";
-            printPath(minPath.pathTaken);
+            printPath(minPath.pathTaken, maze);
             pathToCSV(minPath.pathTaken, "output.csv");
         }
     }
     else if(userSelect == 2){
         vector<vector<int>> greedyPath;
-        int minWeight = primsShortestPath(maze, startX, startY, endX, endY, greedyPath);
+        bool fuelExhaustion = false;
+        int minWeight = primsShortestPath(maze, startX, startY, endX, endY, greedyPath, fuel, maxFuel);
 
         if(minWeight == -1){
-            cout << "No possible path found between start and end!!" << endl;
+            if(fuelExhaustion){
+                cout << "Path couldn't be completed due to fuel exhaustion." << endl; 
+            }else{
+                cout << "No possible path found between start and end!!" << endl;
+            }
             return -1;
         } 
         else{
             cout << "Minimum path weight: " << minWeight << endl;
             cout << "Path traveled was: \n";
-            printPath(greedyPath);
+            printPath(greedyPath, maze);
+            cout << "Remaining fuel: " << fuel << endl;
             pathToCSV(greedyPath, "output.csv");
         }
     }
