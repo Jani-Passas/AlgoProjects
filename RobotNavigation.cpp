@@ -2,7 +2,6 @@
 //This uses backtacking as well as greedy
 //It finds all possible routes before picking the one with the lowest weight
 //Or it prioritizes lowest weights in a greedy method
-//It includes charging stations and fuel tracking
 
 #include <iostream>
 #include <vector>
@@ -26,6 +25,20 @@ bool isValid(int x, int y, vector<vector<int>>& maze){
     int rows = maze.size();
     int cols = maze[0].size();
     return (x >= 0 && x < rows && y >= 0 && y < cols && maze[x][y] > 0 || maze[x][y] == -1);
+}
+
+//helper function to return if a neighboring node is a charger
+bool hasAdjacentCharger(const vector<vector<int>>& maze, int x, int y, int rows, int cols) {
+    vector<pair<int, int>> directions = {{1,0}, {0,1}, {-1,0}, {0,-1}};
+    for(const auto& [dx, dy] : directions) {
+        int checkX = x + dx;
+        int checkY = y + dy;
+        if(checkX >= 0 && checkX < rows && checkY >= 0 && checkY < cols && 
+           maze[checkX][checkY] == -1) {
+            return true;
+        }
+    }
+    return false;
 }
 
 //Find all paths then pick minimum one
@@ -92,9 +105,10 @@ int primsShortestPath(vector<vector<int>>& maze, int startX, int startY, int end
     vector<vector<bool>> visited(rows, vector<bool>(cols, false));
     vector<vector<pair<int, int>>> parent(rows, vector<pair<int, int>>(cols, {-1, -1}));
     greedyPath.assign(rows, vector<int>(cols, 0));
+    // Track which chargers were used for refueling
+    vector<vector<bool>> usedChargers(rows, vector<bool>(cols, false));
 
-    // Reset fuel to starting value since we'll recalculate it when tracing the path
-    int curFuel = fuel;
+    int remainingFuel = fuel;
     fuelExhaustion = false;
 
     priority_queue<Node, vector<Node>, greater<Node>> pq;
@@ -109,64 +123,72 @@ int primsShortestPath(vector<vector<int>>& maze, int startX, int startY, int end
         pq.pop();
 
         if(current.x == endX && current.y == endY) {
-            //Set fuel to starting value before backtracking path
-            curFuel = fuel;
+            remainingFuel = fuel;
             vector<pair<int, int>> path;
             int x_pos = endX;
             int y_pos = endY;
             
-            // First, collect the path
             while(x_pos != -1 && y_pos != -1) {
                 path.push_back({x_pos, y_pos});
                 tie(x_pos, y_pos) = parent[x_pos][y_pos];
             }
 
-            // Then process the path in reverse (start to end)
-            cout << "\nPrinting the - Path and fuel calculations:" << endl;
+            cout << "Printing the - Path and fuel calculations:" << endl;
             for(int i = path.size() - 1; i >= 0; i--) {
                 x_pos = path[i].first;
                 y_pos = path[i].second;
                 
-                // Calculate cell cost
-                int weight = (maze[x_pos][y_pos] == -1) ? 1 : maze[x_pos][y_pos];
-                
-                cout << "Position (" << x_pos << "," << y_pos << ") Cost: " << weight 
-                     << " Fuel before: " << curFuel;
-
-                // Check if we have enough fuel
-                if(curFuel < weight) {
-                    // Check for adjacent chargers before declaring fuel exhaustion
-                    bool hasAdjacentCharger = false;
-                    for(const auto& [dx, dy] : directions) {
+                // Mark chargers that are used
+                if(maze[x_pos][y_pos] == -1) {
+                    remainingFuel = maxFuel;
+                    cout << "Position (" << x_pos << "," << y_pos << ") RECHARGING at charger to: " << remainingFuel << endl;
+                    usedChargers[x_pos][y_pos] = true;
+                } else if(hasAdjacentCharger(maze, x_pos, y_pos, rows, cols)) {
+                    remainingFuel = maxFuel;
+                    // Find and mark the adjacent charger that was used
+                    vector<pair<int, int>> adjacentDirs = {{1,0}, {0,1}, {-1,0}, {0,-1}};
+                    for(const auto& [dx, dy] : adjacentDirs) {
                         int checkX = x_pos + dx;
                         int checkY = y_pos + dy;
                         if(checkX >= 0 && checkX < rows && checkY >= 0 && checkY < cols && 
                            maze[checkX][checkY] == -1) {
-                            hasAdjacentCharger = true;
-                            curFuel = maxFuel;  // Recharge before moving
-                            cout << " (RECHARGED from adjacent)";
+                            usedChargers[checkX][checkY] = true;
                             break;
                         }
                     }
-                    if(!hasAdjacentCharger) {
-                        fuelExhaustion = true;
-                        return -1;
-                    }
+                    cout << "Position (" << x_pos << "," << y_pos << ") RECHARGING from adjacent charger to: " << remainingFuel << endl;
                 }
+
+                int cellCost = (maze[x_pos][y_pos] == -1) ? 1 : maze[x_pos][y_pos];
                 
-                // Mark the path and update fuel
+                cout << "Position (" << x_pos << "," << y_pos << ") Cost: " << cellCost 
+                     << " Fuel before: " << remainingFuel;
+
+                if(remainingFuel < cellCost) {
+                    fuelExhaustion = true;
+                    cout << endl;
+                    return -1;
+                }
+
                 if(maze[x_pos][y_pos] == -1) {
                     greedyPath[x_pos][y_pos] = -2;  // Charger on path
-                    curFuel = maxFuel;  // Recharge at charger
-                    cout << " (RECHARGED at charger)";
                 } else {
                     greedyPath[x_pos][y_pos] = 1;  // Mark path
-                    curFuel -= weight;
+                    remainingFuel -= cellCost;
                 }
-                cout << " Fuel after: " << curFuel << endl;
+                cout << " Fuel after: " << remainingFuel << endl;
             }
             
-            fuel = curFuel;  // Update the reference fuel value
+            // After processing the path, mark used chargers that weren't on the path
+            for(int i = 0; i < rows; i++) {
+                for(int j = 0; j < cols; j++) {
+                    if(maze[i][j] == -1 && usedChargers[i][j] && greedyPath[i][j] == 0) {
+                        greedyPath[i][j] = -2;  // Mark used chargers with 'C'
+                    }
+                }
+            }
+            
+            fuel = remainingFuel;
             return current.weight;
         }
 
@@ -187,6 +209,8 @@ int primsShortestPath(vector<vector<int>>& maze, int startX, int startY, int end
     }
     return -1;
 }
+
+
 //Print the path out to terminal
 void printPath(vector<vector<int>>& finalPath, vector<vector<int>>& maze){
     for(size_t i=0; i<finalPath.size(); i++){
@@ -195,10 +219,10 @@ void printPath(vector<vector<int>>& finalPath, vector<vector<int>>& maze){
                 cout << "1 "; // Normal path
             }
             else if(finalPath[i][j] == -2){
-                cout << "C "; // Charger on path
+                cout << "C "; // Charger (either on path or used adjacent)
             }
             else if(finalPath[i][j] == -1 || maze[i][j] == -1){
-                cout << "c "; // Adjacent charger or charger not on path
+                cout << "c "; // Unused charger
             }
             else{
                 cout << "0 ";
@@ -233,31 +257,31 @@ int fuelCalculator(vector<vector<int>>& finalPath, int& fuel, int maxFuel){
 
 int main(){
     //Maze to traverse, 0s are obstacles
-    // vector<vector<int>> maze = {
-    //     {1, 0, 2,-1, 1, 3, 5},
-    //     {2, 3, 1, 0, 2, 8, 2},
-    //     {0, 2, 6, 4, 3, 4, 3},
-    //     {1, 7,-1, 0, 1, 6, 4},
-    //     {2, 3, 1, 0, 2, 1, 7},
-    //     {0, 2, 6, 4, 3, 0, 2},
-    //     {1, 7, 2, 0, 1, 1, 5}
-    // };
     vector<vector<int>> maze = {
-        {1, 0, 2, 3,-1, 3, 5, 2, 2, 1, 4, 6, 1 ,3},
-        {2, 3, 1, 0, 2, 8, 2, 5, 3, 2, 3, 2, 0, 2},
-        {0, 2, 6, 4, 3, 4, 3, 2, 5,-1, 3, 2, 3, 0},
-        {1, 7, 2, 0, 1, 6, 4, 2, 1, 3, 6, 2, 5, 3},
-        {1, 0, 2, 3, 1, 0, 0, 2, 3, 2, 3, 1, 3, 5},
-        {2, 3, 1, 0, 6,-1, 7, 2, 6, 1, 4, 5, 2, 2},
-        {0, 2, 6, 4, 3, 0, 2, 2, 4, 5, 4, 2, 3, 1},
-        {1, 7, 2, 0, 1, 1, 5, 2, 1, 0, 0, 0, 2, 1},
-        {2, 3, 1, 0, 2, 8, 2, 5, 3, 2, 0, 1, 1, 3},
-        {0, 2, 6, 4, 3, 4, 3, 2, 5, 1,-1, 3, 4, 5},
-        {1, 7, 2,-1, 1, 6, 4, 2, 1, 3, 4, 2, 1, 7},
-        {1,-1, 2, 0, 1, 0,-1, 2, 3, 2, 4, 2, 3, 2},
-        {2, 3, 1, 0, 2, 1, 7, 2, 6, 1, 3, 3, 2, 1},
-        {0, 2, 6, 4, 3, 0, 2, 2, 4, 5, 0, 0, 2, 1}
+        {1, 0, 2, 1, 1, -1, 5},
+        {2, 3,-1, 0, 2, 8, 2},
+        {0, 2, 6, 4, 3, 4, 3},
+        {1, 7,-1, 0, 1, 6, 4},
+        {2, 3, 1, 0, 2, 1, 7},
+        {0, 2, 6, 4, 3, 0, 2},
+        {1, 7, 2, 0, 1, 1, 5}
     };
+    // vector<vector<int>> maze = {
+    //     {1, 0, 2, 3,-1, 3, 5, 2, 2, 1, 4, 6, 1 ,3},
+    //     {2, 3, 1, 0, 2, 8, 2, 5, 3, 2, 3, 2, 0, 2},
+    //     {0, 2, 6, 4, 3, 4, 3, 2, 5,-1, 3, 2, 3, 0},
+    //     {1, 7, 2, 0, 1, 6, 4, 2, 1, 3, 6, 2, 5, 3},
+    //     {1, 0, 2, 3, 1, 0, 0, 2, 3, 2, 3, 1, 3, 5},
+    //     {2, 3, 1, 0, 6,-1, 7, 2, 6, 1, 4, 5, 2, 2},
+    //     {0, 2, 6, 4, 3, 0, 2, 2, 4, 5, 4, 2, 3, 1},
+    //     {1, 7, 2, 0, 1, 1, 5, 2, 1, 0, 0, 0, 2, 1},
+    //     {2, 3, 1, 0, 2, 8, 2, 5, 3, 2, 0, 1, 1, 3},
+    //     {0, 2, 6, 4, 3, 4, 3, 2, 5, 1,-1, 3, 4, 5},
+    //     {1, 7, 2,-1, 1, 6, 4, 2, 1, 3, 4, 2, 1, 7},
+    //     {1,-1, 2, 0, 1, 0,-1, 2, 3, 2, 4, 2, 3, 2},
+    //     {2, 3, 1, 0, 2, 1, 7, 2, 6, 1, 3, 3, 2, 1},
+    //     {0, 2, 6, 4, 3, 0, 2, 2, 4, 5, 0, 0, 2, 1}
+    // };
 
     for(size_t i=0; i<maze.size(); i++){
         for(size_t j=0; j<maze[i].size(); j++){
