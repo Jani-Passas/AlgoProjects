@@ -49,7 +49,7 @@ void findAllPaths(vector<vector<int>>& maze, int x, int y, vector<vector<int>>& 
 
     //Out of bounds or invalid cell check
     if(x < 0 || x >= rows || y < 0 || y >= columns || 
-       (maze[x][y] < 0 && maze[x][y] != -1)) return;
+       (maze[x][y] <= 0 && maze[x][y] != -1)) return;
 
     //Reached destination
     if (x == endX && y == endY) {
@@ -232,7 +232,7 @@ void printPath(vector<vector<int>>& finalPath, vector<vector<int>>& maze){
     }
 }
 
-void pathToCSV(vector<vector<int>> pathTaken, string filename){
+void pathToCSV(vector<vector<int>> pathTaken, vector<vector<int>> maze, string filename){
     ofstream outFile(filename);
     if(!outFile.is_open()){
         cout << "\n ERROR: Not able to open file " << filename <<endl;
@@ -240,7 +240,12 @@ void pathToCSV(vector<vector<int>> pathTaken, string filename){
     }
     for(size_t i=0; i<pathTaken.size(); i++){
         for(size_t j=0; j<pathTaken[i].size(); j++){
-            outFile << pathTaken[i][j];
+            if(maze[i][j] == -1 && pathTaken[i][j]!=-2){
+                outFile << "-1 ";
+            }
+            else{
+                outFile << pathTaken[i][j];
+            }
             if(j<pathTaken[i].size()-1){
                 outFile << ", ";
             }
@@ -340,7 +345,7 @@ int main(){
             cout << "Minimum path weight: " << minPath.totalWieght << endl;
             cout << "Path grid given as: \n";
             printPath(minPath.pathTaken, maze);
-            pathToCSV(minPath.pathTaken, "output.csv");
+            pathToCSV(minPath.pathTaken, maze, "output.csv");
             return 0;
         }
     }
@@ -362,7 +367,7 @@ int main(){
             cout << "Path traveled was: \n";
             printPath(greedyPath, maze);
             cout << "Remaining fuel: " << fuel << endl;
-            pathToCSV(greedyPath, "output.csv");
+            pathToCSV(greedyPath, maze, "output.csv");
         }
     }
     else{
