@@ -2,136 +2,104 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pathfinding Maze Solver</title>
+    <title>Pathfinding and Fueling UI</title>
     <style>
-        #gridContainer {
+        .grid-container {
             display: grid;
-            grid-template-columns: repeat(5, 40px);
-            gap: 2px;
+            grid-template-columns: repeat(7, 1fr); /* 6 columns for 6x6 grid */
+            grid-template-rows: repeat(7, 1fr); /* 6 rows */
+            gap: 5px;
+            width: 300px;
+            height: 300px;
         }
-        .grid-cell {
+        .grid-item {
             width: 50px;
             height: 50px;
-            border: 1px solid black;
             display: flex;
-            justify-content: center;
             align-items: center;
-            cursor: pointer;
+            justify-content: center;
+            border: 1px solid #ccc;
+            text-align: center;
+            font-size: 12px;
         }
-        .path-cell {
-            background-color: yellow;
-        }
-        .obstacle-cell {
-            background-color: grey;
-        }
+        .blue { background-color: lightblue; }
+        .green { background-color: green; }
+        .grey { background-color: grey; }
+        .obstacle { background-color: white; }
+        .charger { background-color: orange; }
+        .path { background-color: green; }
+        .unused { background-color: white; }
     </style>
 </head>
 <body>
-    <h1>Pathfinding Maze Solver</h1>
-    <div id="grid" class="grid"></div>
-    <button id="solveBtn">Find Shortest Path</button>
-    <pre id="output"></pre>
+    <h1>Pathfinding and Fueling UI</h1>
+
+    <button onclick="loadCSV()">Load Pathfinding Output</button>
+    
+    <div class="grid-container" id="grid-container"></div>
 
     <script>
-        const gridHeight = 4;
-        const gridWidth = 5;
-        const grid = document.getElementById('grid');
-        let maze = [
-            [1, 0, 2, 3, 1],
-            [2, 3, 1, 0, 2],
-            [0, 2, 6, 4, 3],
-            [1, 7, 2, 0, 1]
-        ];
+        // Function to create and update the grid based on pathfinding output
+        function createGrid(gridData) {
+            const gridContainer = document.getElementById('grid-container');
+            gridContainer.innerHTML = ''; // Clear the grid first
+            const numRows = gridData.length;
+            const numCols = gridData[0].length;
 
-        function renderGrid(path = []) {
-            const gridContainer = document.getElementById('gridContainer');
-            gridContainer.innerHTML = ''; // Clear existing grid
-            
-            for (let i = 0; i < grid.length; i++) {
-                for (let j = 0; j < grid[i].length; j++) {
-                    const cell = document.createElement('div');
-                    cell.classList.add('grid-cell');
-
-                    if (grid[i][j] === 1) {
-                        cell.classList.add('obstacle-cell');
+            for (let i = 0; i < numRows; i++) {
+                for (let j = 0; j < numCols; j++) {
+                    const cellValue = gridData[i][j];
+                    const gridItem = document.createElement('div');
+                    gridItem.classList.add('grid-item');
+                    gridItem.setAttribute('data-x', i);
+                    gridItem.setAttribute('data-y', j);
+                    
+                    // Set cell styles based on the value
+                    if (cellValue === 1) {
+                        gridItem.classList.add('blue'); // Path
+                    } else if (cellValue === -1) {
+                        gridItem.classList.add('charger'); // Charger
+                    } else if (cellValue === 0) {
+                        gridItem.classList.add('obstacle'); // Obstacle
+                    } else if (cellValue === 2) {
+                        gridItem.classList.add('green'); // Charging Station
+                    } else if (cellValue === -2) {
+                        gridItem.classList.add('path'); // Path cell
+                    } else {
+                        gridItem.classList.add('unused'); // Unused cell
                     }
-
-                    path.forEach(([x, y]) => {
-                        if (x === i && y === j) {
-                            cell.classList.add('path-cell');
-                        }
-                    });
-
-                    cell.addEventListener('click', () => {
-                        if (grid[i][j] === 1) {
-                            grid[i][j] = 0;
-                            cell.classList.remove('obstacle-cell');
-                        } else {
-                            grid[i][j] = 1;
-                            cell.classList.add('obstacle-cell');
-                        }
-                    });
-
-                    gridContainer.appendChild(cell);
+                    
+                    gridContainer.appendChild(gridItem);
                 }
             }
         }
 
-        function isSafe(x, y, grid, visited) {
-            return x >= 0 && x < grid.length && y >= 0 && y < grid[0].length && grid[x][y] === 0 && !visited[x][y];
+        // Function to fetch and parse CSV from output.csv
+        function loadCSV() {
+            fetch('output.csv')
+                .then(response => response.text())
+                .then(csv => {
+                    const gridData = parseCSV(csv);
+                    createGrid(gridData);
+                })
+                .catch(error => {
+                    console.error('Error loading CSV file:', error);
+                    alert('Error loading the CSV file.');
+                });
         }
 
-        function findShortestPath(grid) {
-            const rows = grid.length;
-            const cols = grid[0].length;
-            const directions = [[-1, 0], [0, 1], [1, 0], [0, -1]];
-            const path = [];
-            let found = false;
-
-            function backtrack(x, y, currentPath, visited) {
-                if (x === rows - 1 && y === cols - 1) {
-                    if (!found || currentPath.length < path.length) {
-                        path.length = 0;
-                        path.push(...currentPath);
-                        found = true;
-                    }
-                    return;
-                }
-
-                visited[x][y] = true;
-
-                for (const [dx, dy] of directions) {
-                    const newX = x + dx;
-                    const newY = y + dy;
-                    if (isSafe(newX, newY, grid, visited)) {
-                        currentPath.push([newX, newY]);
-                        backtrack(newX, newY, currentPath, visited);
-                        currentPath.pop();
-                    }
-                }
-
-                visited[x][y] = false;
+        // Function to parse CSV and convert it into a 2D array
+        function parseCSV(csv) {
+            const lines = csv.split('\n');
+            const result = [];
+            for (let line of lines) {
+                if (line.trim() === '') continue;
+                const values = line.split(',').map(value => parseInt(value.trim()));
+                result.push(values);
             }
-
-            const visited = Array.from({ length: rows }, () => Array(cols).fill(false));
-            if (grid[0][0] === 0) {
-                backtrack(0, 0, [[0, 0]], visited);
-            }
-            return path;
+            return result;
         }
-
-        document.getElementById('generatePath').addEventListener('click', () => {
-            const path = findShortestPath(grid);
-            renderGrid(path);
-            if (path.length === 0) {
-                alert('No path found!');
-            }
-        });
-
-        // Initial render without path
-        renderGrid();
     </script>
 </body>
 </html>
