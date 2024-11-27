@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pathfinding and Fueling UI</title>
+    <title>Backtracking UI</title>
     <style>
         .grid-container {
             display: grid;
-            grid-template-columns: repeat(14, 1fr); /* 6 columns for 6x6 grid */
-            grid-template-rows: repeat(14, 1fr); /* 6 rows */
+            grid-template-columns: repeat(14, 1fr);
+            grid-template-rows: repeat(14, 1fr);
             gap: 5px;
             width: 300px;
             height: 300px;
@@ -40,10 +40,9 @@
     <div class="grid-container" id="grid-container"></div>
 
     <script>
-        // Function to create and update the grid based on pathfinding output
         function createGrid(gridData) {
             const gridContainer = document.getElementById('grid-container');
-            gridContainer.innerHTML = ''; // Clear the grid first
+            gridContainer.innerHTML = '';
             const numRows = gridData.length;
             const numCols = gridData[0].length;
 
@@ -55,19 +54,18 @@
                     gridItem.setAttribute('data-x', i);
                     gridItem.setAttribute('data-y', j);
                     
-                    // Set cell styles based on the value
                     if (cellValue === 1) {
-                        gridItem.classList.add('blue'); // Path
+                        gridItem.classList.add('blue');
                     } else if (cellValue === -1) {
-                        gridItem.classList.add('charger'); // Charger
+                        gridItem.classList.add('charger');
                     } else if (cellValue === 0) {
-                        gridItem.classList.add('obstacle'); // Obstacle
+                        gridItem.classList.add('obstacle');
                     } else if (cellValue === 2) {
-                        gridItem.classList.add('green'); // Charging Station
+                        gridItem.classList.add('green');
                     } else if (cellValue === -2) {
-                        gridItem.classList.add('path'); // Path cell
+                        gridItem.classList.add('path');
                     } else {
-                        gridItem.classList.add('unused'); // Unused cell
+                        gridItem.classList.add('unused');
                     }
                     
                     gridContainer.appendChild(gridItem);
@@ -75,7 +73,6 @@
             }
         }
 
-        // Function to fetch and parse CSV from output.csv
         function loadCSV() {
             fetch('output.csv')
                 .then(response => response.text())
@@ -89,7 +86,6 @@
                 });
         }
 
-        // Function to parse CSV and convert it into a 2D array
         function parseCSV(csv) {
             const lines = csv.split('\n');
             const result = [];
