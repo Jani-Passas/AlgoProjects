@@ -356,7 +356,7 @@ int main(){
             cout << "Path grid given as: \n";
             printPath(minPath.pathTaken, maze);
             cout << "\nRemaining fuel: " << minPath.remainingFuel << endl;
-            pathToCSV(minPath.pathTaken, maze, "output.csv");
+            pathToCSV(minPath.pathTaken, maze, "dynamic_output.csv");
             return 0;
         }
     }
@@ -378,7 +378,7 @@ int main(){
             cout << "Path traveled was: \n";
             printPath(greedyPath, maze);
             cout << "Remaining fuel: " << fuel << endl;
-            pathToCSV(greedyPath, maze, "output.csv");
+            pathToCSV(greedyPath, maze, "greedy_output.csv");
         }
     }
     else{
