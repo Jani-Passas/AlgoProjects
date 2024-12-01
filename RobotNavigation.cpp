@@ -2,6 +2,7 @@
 //This uses backtacking as well as greedy
 //It finds all possible routes before picking the one with the lowest weight
 //Or it prioritizes lowest weights in a greedy method
+//Both methods have charger capabilities but dynamic garuntees optimal solution whereas greedy can scale up better
 
 #include <iostream>
 #include <vector>
@@ -12,6 +13,7 @@ using namespace std;
 struct path{ //path used for the dynamic approach of finding all paths
     int totalWieght;//Total weight of the path taken, can be cost or time
     vector<vector<int>> pathTaken;//Vectors to store the path taken for this route
+    int remainingFuel;
 };
 
 struct Node{ //
@@ -41,33 +43,43 @@ bool hasAdjacentCharger(const vector<vector<int>>& maze, int x, int y, int rows,
     return false;
 }
 
-//Find all paths then pick minimum one
 void findAllPaths(vector<vector<int>>& maze, int x, int y, vector<vector<int>>& currentPath, 
-    vector<path>& allPaths, int curWeight, int endX, int endY){  
+    vector<path>& allPaths, int curWeight, int endX, int endY, int remainingFuel, int maxFuel){  
     int rows = maze.size();
     int columns = maze[0].size();
 
-    //Out of bounds or invalid cell check
+    //Check for boundary or out of bounds
     if(x < 0 || x >= rows || y < 0 || y >= columns || 
        (maze[x][y] <= 0 && maze[x][y] != -1)) return;
 
-    //Reached destination
+    //Check if fuel becomes exhausted
+    int cellCost = (maze[x][y] == -1) ? 1 : maze[x][y];
+    if(remainingFuel < cellCost) return;
+
+    //End destination reached
     if (x == endX && y == endY) {
         currentPath[x][y] = 1;
-        allPaths.push_back({curWeight + maze[x][y], currentPath});
+        
+        //Remaining fuel for when end destination reached
+        int finalFuel = (maze[x][y] == -1) ? maxFuel : (remainingFuel - cellCost);
+    
+        allPaths.push_back({curWeight + cellCost, currentPath, finalFuel});
+        
         currentPath[x][y] = 0;
         return;
     }
 
-    //Prevent revisiting
+    //check to prevent infinite loops
     if(currentPath[x][y] == 1) return;
 
-    //Mark current cell
+    //Mark current cell as visited
     currentPath[x][y] = 1;
-    int weight = maze[x][y];
     int originalWeight = maze[x][y];
 
-    //Move in four directions with bounds check
+    //Update remaining fuel
+    int updatedFuel = (maze[x][y] == -1) ? maxFuel : (remainingFuel - cellCost);
+
+    //Move in four directions (and check boundaries)
     vector<pair<int, int>> directions = {{1,0}, {0,1}, {-1,0}, {0,-1}};
     for(const auto& [dx, dy] : directions) {
         int newX = x + dx;
@@ -76,22 +88,24 @@ void findAllPaths(vector<vector<int>>& maze, int x, int y, vector<vector<int>>& 
         //Check if new position is valid based on boundaries
         if(newX >= 0 && newX < rows && newY >= 0 && newY < columns) {
             findAllPaths(maze, newX, newY, currentPath, allPaths, 
-                         curWeight + (weight == -1 ? 1 : weight), endX, endY);
+                         curWeight + cellCost, endX, endY, updatedFuel, maxFuel);
         }
     }
 
-    //Backtrack section
+    //Backtrack step
     currentPath[x][y] = 0;
     maze[x][y] = originalWeight;
 }
 
-
-//Find path with minimum weight
+//Find path with minimum weight, if tied then higher remaining fuel
 path findMinPath(const vector<path>& allPaths){
+    if(allPaths.empty()){
+        throw runtime_error("No paths found!!");
+    }
     path minPath = allPaths[0];
     for(size_t i=0; i<allPaths.size(); i++){
         const path& curPath = allPaths[i];
-        if(curPath.totalWieght < minPath.totalWieght){
+        if (curPath.totalWieght < minPath.totalWieght || (curPath.totalWieght == minPath.totalWieght && curPath.remainingFuel > minPath.remainingFuel)){
             minPath = curPath;
         }
     }
@@ -215,11 +229,11 @@ int findGreedyPath(vector<vector<int>>& maze, int startX, int startY, int endX, 
 void printPath(vector<vector<int>>& finalPath, vector<vector<int>>& maze){
     for(size_t i=0; i<finalPath.size(); i++){
         for(size_t j=0; j<finalPath[i].size(); j++){
-            if(finalPath[i][j] > 0){
-                cout << "1 "; // Normal path
-            }
-            else if(finalPath[i][j] == -2){
+            if(finalPath[i][j] == -2 || (finalPath[i][j] == 1 && maze[i][j] == -1)){
                 cout << "C "; // Charger (either on path or used adjacent)
+            }
+            else if(finalPath[i][j] > 0){
+                cout << "1 "; // Normal Path location
             }
             else if(finalPath[i][j] == -1 || maze[i][j] == -1){
                 cout << "c "; // Unused charger
@@ -256,37 +270,33 @@ void pathToCSV(vector<vector<int>> pathTaken, vector<vector<int>> maze, string f
     cout << "Data saved into CSV file and written to: " << filename << endl;
 }
 
-int fuelCalculator(vector<vector<int>>& finalPath, int& fuel, int maxFuel){
-
-}
-
 int main(){
     // Maze to traverse, 0s are obstacles
-    // vector<vector<int>> maze = {
-    //     {1, 0, 2, 1, 1, 6},
-    //     {2, 3, 1, 0, 2, 8},
-    //     {0, 2, 6, 4, 3, 4},
-    //     {1, 7, 0, 0, 1, 6},
-    //     {2, 3, 1, 0, 2, 1},
-    //     {0, 2, 6, 4, 3, 0}
-    // };
-    
     vector<vector<int>> maze = {
-        {1, 0, 2, 3, 1, 3, 2,-1, 2, 1, 4, 6, 1 ,3},
-        {2, 3, 1, 0, 2, 8, 2, 5, 3, 2, 3, 2, 0, 2},
-        {0, 2, 6, 4, 3, 4, 1, 2, 5,-1, 3, 2, 3, 0},
-        {1, 7, 2, 0, 1, 6, 4, 2, 1, 3, 6, 2, 5, 3},
-        {1, 0, 2, 3, 1, 0, 0, 2, 3, 2, 3, 1, 3, 5},
-        {2, 3, 1, 0, 6,-1, 7, 2, 6, 1, 4, 5, 2, 2},
-        {0, 2, 6, 4, 3, 0, 2, 2, 4, 5, 4, 2, 3, 1},
-        {1, 7, 2, 0, 1, 1, 5, 2, 1, 0, 0, 0, 2, 1},
-        {2, 3, 1, 0, 2, 8, 2, 5, 3, 2, 0, 1, 1, 3},
-        {0, 2, 6, 4, 3, 4, 3, 2, 5, 1,-1, 3, 4, 5},
-        {1, 7, 2,-1, 1, 6, 4, 2, 1, 3, 4, 2, 1, 7},
-        {1,-1, 2, 0, 1, 0,-1, 2, 3, 2, 4, 2, 3, 2},
-        {2, 3, 1, 0, 2, 1, 7, 2, 6, 1, 3, 3, 2, 1},
-        {0, 2, 6, 4, 3, 0, 2, 2, 4, 5, 0, 0, 2, 1}
+        {1, 0, 2,-1, 7, 6},
+        {2, 3, 1, 0, 2, 8},
+        {0, 2, 5, 4, 3, 4},
+        {1, 7, 0, 0, 1, 6},
+        {2,-1, 1, 0, 2, 1},
+        {0, 2, 6, 4, 3, 0}
     };
+    
+    // vector<vector<int>> maze = {
+    //     {1, 0, 2, 3, 1, 3, 2,-1, 2, 1, 4, 6, 1 ,3},
+    //     {2, 3, 1, 0, 2, 8, 2, 5, 3, 2, 3, 2, 0, 2},
+    //     {0, 2, 6, 4, 3, 4, 1, 2, 5,-1, 3, 2, 3, 0},
+    //     {1, 7, 2, 0, 1, 6, 4, 2, 1, 3, 6, 2, 5, 3},
+    //     {1, 0, 2, 3, 1, 0, 0, 2, 3, 2, 3, 1, 3, 5},
+    //     {2, 3, 1, 0, 6,-1, 7, 2, 6, 1, 4, 5, 2, 2},
+    //     {0, 2, 6, 4, 3, 0, 2, 2, 4, 5, 4, 2, 3, 1},
+    //     {1, 7, 2, 0, 1, 1, 5, 2, 1, 0, 0, 0, 2, 1},
+    //     {2, 3, 1, 0, 2, 8, 2, 5, 3, 2, 0, 1, 1, 3},
+    //     {0, 2, 6, 4, 3, 4, 3, 2, 5, 1,-1, 3, 4, 5},
+    //     {1, 7, 2,-1, 1, 6, 4, 2, 1, 3, 4, 2, 1, 7},
+    //     {1,-1, 2, 0, 1, 0,-1, 2, 3, 2, 4, 2, 3, 2},
+    //     {2, 3, 1, 0, 2, 1, 7, 2, 6, 1, 3, 3, 2, 1},
+    //     {0, 2, 6, 4, 3, 0, 2, 2, 4, 5, 0, 0, 2, 1}
+    // };
 
     for(size_t i=0; i<maze.size(); i++){
         for(size_t j=0; j<maze[i].size(); j++){
@@ -334,7 +344,7 @@ int main(){
         vector<path> allPaths;//store all possible paths (dynamic)
         vector<vector<int>> curPath(rows, vector<int>(columns,0));//creates a 2D array of all zeroes to track cur path
 
-        findAllPaths(maze, startX, startY, curPath, allPaths, 0, endX, endY);
+        findAllPaths(maze, startX, startY, curPath, allPaths, 0, endX, endY, fuel, maxFuel);
 
         if(allPaths.empty()){
             cout << "No path found!" << endl;
@@ -345,6 +355,7 @@ int main(){
             cout << "Minimum path weight: " << minPath.totalWieght << endl;
             cout << "Path grid given as: \n";
             printPath(minPath.pathTaken, maze);
+            cout << "\nRemaining fuel: " << minPath.remainingFuel << endl;
             pathToCSV(minPath.pathTaken, maze, "output.csv");
             return 0;
         }
