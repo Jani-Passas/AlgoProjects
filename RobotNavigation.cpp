@@ -254,7 +254,11 @@ void pathToCSV(vector<vector<int>> pathTaken, vector<vector<int>> maze, string f
     }
     for(size_t i=0; i<pathTaken.size(); i++){
         for(size_t j=0; j<pathTaken[i].size(); j++){
-            if(maze[i][j] == -1 && pathTaken[i][j]!=-2){
+            if(pathTaken[i][j] == -2 || (pathTaken[i][j] == 1 && maze[i][j] == -1))
+            {
+                outFile << "-2 ";
+            }
+            else if(pathTaken[i][j] == -1 || maze[i][j] == -1){
                 outFile << "-1 ";
             }
             else{
