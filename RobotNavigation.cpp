@@ -43,6 +43,8 @@ bool hasAdjacentCharger(const vector<vector<int>>& maze, int x, int y, int rows,
     return false;
 }
 
+//Dynamic programming method for finding all the paths
+//Large time and space complexity
 void findAllPaths(vector<vector<int>>& maze, int x, int y, vector<vector<int>>& currentPath, 
     vector<path>& allPaths, int curWeight, int endX, int endY, int remainingFuel, int maxFuel){  
     int rows = maze.size();
@@ -112,6 +114,7 @@ path findMinPath(const vector<path>& allPaths){
     return minPath;
 }
 
+//Greedy algorithm to find path by navigating through lowest weight cells
 int findGreedyPath(vector<vector<int>>& maze, int startX, int startY, int endX, int endY, 
                       vector<vector<int>>& greedyPath, int& fuel, int maxFuel, bool& fuelExhaustion){
     int rows = maze.size();
@@ -125,17 +128,19 @@ int findGreedyPath(vector<vector<int>>& maze, int startX, int startY, int endX, 
     int remainingFuel = fuel;
     fuelExhaustion = false;
 
-    priority_queue<Node, vector<Node>, greater<Node>> pq;
+    priority_queue<Node, vector<Node>, greater<Node>> pq; //prioirty queue for explore new cells
     vector<pair<int, int>> directions = {{1,0}, {0,1}, {-1,0}, {0,-1}};
 
     int startWeight = (maze[startX][startY] == -1) ? 1 : maze[startX][startY];
     pq.push({startX, startY, startWeight});
     visited[startX][startY] = true;
 
+    //While loop to check through the priority queue nodes
     while(!pq.empty()){
         Node current = pq.top();
         pq.pop();
 
+        //If destination reached
         if(current.x == endX && current.y == endY){
             remainingFuel = fuel;
             vector<pair<int, int>> path;
@@ -178,6 +183,7 @@ int findGreedyPath(vector<vector<int>>& maze, int startX, int startY, int endX, 
                 // cout << "Position (" << x_pos << "," << y_pos << ") Cost: " << cellCost 
                     //  << " Fuel before: " << remainingFuel;
 
+                //Fuel exhaustion check, returns that no path could be found
                 if(remainingFuel < cellCost){
                     fuelExhaustion = true;
                     cout << endl;
@@ -206,7 +212,7 @@ int findGreedyPath(vector<vector<int>>& maze, int startX, int startY, int endX, 
             return current.weight;
         }
 
-        for(const auto& [x_move, y_move] : directions){
+        for(const auto& [x_move, y_move] : directions){ //move in all four directions
             int newX = current.x + x_move;
             int newY = current.y + y_move;
 
@@ -246,12 +252,14 @@ void printPath(vector<vector<int>>& finalPath, vector<vector<int>>& maze){
     }
 }
 
+//Helper function to send the path to a csv file for the UI
 void pathToCSV(vector<vector<int>> pathTaken, vector<vector<int>> maze, string filename){
     ofstream outFile(filename);
-    if(!outFile.is_open()){
+    if(!outFile.is_open()){ //if outfile cannot be opened
         cout << "\n ERROR: Not able to open file " << filename <<endl;
         return;
     }
+    //iterate through the path maze and write to outfile
     for(size_t i=0; i<pathTaken.size(); i++){
         for(size_t j=0; j<pathTaken[i].size(); j++){
             if(pathTaken[i][j] == -2 || (pathTaken[i][j] == 1 && maze[i][j] == -1))
@@ -302,6 +310,7 @@ int main(){
     //     {0, 2, 6, 4, 3, 0, 2, 2, 4, 5, 0, 0, 2, 1}
     // };
 
+    //Print maze to user
     for(size_t i=0; i<maze.size(); i++){
         for(size_t j=0; j<maze[i].size(); j++){
             cout << maze[i][j] << " ";
@@ -325,6 +334,7 @@ int main(){
     cout << "Please enter max fuel capacity: ";
     cin >> maxFuel;
 
+    //Check if inputs are valid
     if(startX < 0 || startX >= rows || startY < 0 || startY >= columns){
         cout << "Invalid start point based on boundaries! Please pick between:";
         cout << rows-1 << ", " << columns-1;        
@@ -333,6 +343,10 @@ int main(){
     if(endX < 0 || endX >= rows || endY < 0 || endY >= columns){
         cout << "Invalid end point based on boundaries! Please pick between:";
         cout << rows-1 << ", " << columns-1;
+        return -1;
+    }
+    if(fuel < 0 || maxFuel < 0){
+        cout << "Invalid fuel parameters entered, must be positive!";
         return -1;
     }
 
@@ -344,6 +358,7 @@ int main(){
     cout << "Please enter 1 for dynamic approach and 2 for greedy approach: ";
     cin >> userSelect;
 
+    //Dynamic approach
     if(userSelect == 1){
         vector<path> allPaths;//store all possible paths (dynamic)
         vector<vector<int>> curPath(rows, vector<int>(columns,0));//creates a 2D array of all zeroes to track cur path
@@ -354,7 +369,7 @@ int main(){
             cout << "No path found!" << endl;
             return -1;
         }
-        else{
+        else{ //if a path is found
             path minPath = findMinPath(allPaths);
             cout << "Minimum path weight: " << minPath.totalWieght << endl;
             cout << "Path grid given as: \n";
@@ -364,6 +379,7 @@ int main(){
             return 0;
         }
     }
+    //Greedy approach
     if(userSelect == 2){
         vector<vector<int>> greedyPath;
         bool fuelExhaustion = false;
