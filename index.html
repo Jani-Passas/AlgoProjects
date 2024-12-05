@@ -1,9 +1,11 @@
+<!-- v4 of JanVas Backtracking UI by Vasishta Malisetty -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Backtracking UI</title>
+    <!-- CSS styling for 5x5 Grid  -->
     <style>
         .grid-container {
             display: grid;
@@ -32,18 +34,19 @@
 </head>
 <body>
     <h1>Backtracking UI</h1>
-
+<!-- Button that loads the output csv file from the backend  -->
     <button onclick="loadCSV()">Load Path</button>
     
     <div class="grid-container" id="grid-container"></div>
-
+<!-- Function that populates the 5x5 Grid  -->
     <script>
+        
         function createGrid(gridData) {
             const gridContainer = document.getElementById('grid-container');
             gridContainer.innerHTML = '';
-             const r = gridData.length;
-            const c = gridData[0].length;
-
+             const r = gridData.length; // rows
+            const c = gridData[0].length; // columns
+            // nested for loop to iterate through the csv file
             for (let i = 0; i < r; i++) 
             {
                 for (let j = 0; j < c; j++) 
@@ -53,32 +56,32 @@
                     gridItem.classList.add('grid-item');
                     gridItem.setAttribute('data-x', i);
                     gridItem.setAttribute('data-y', j);
-                    
+                    // cases that assign colors to csv values
                     if (cellValue == 1) 
                     {
-                        gridItem.classList.add('path');
+                        gridItem.classList.add('path'); // 1 is shortest path
                     } 
-                    else if (cellValue == -1) 
+                    else if (cellValue == -1) // -1 is unused charger
                     {
                         gridItem.classList.add('unused-charger');
                     } 
-                    else if (cellValue == 0) 
+                    else if (cellValue == 0)  // 0 is an obstacle
                     {
                         gridItem.classList.add('obstacle');
                     }
-                    else if (cellValue == -2) 
+                    else if (cellValue == -2)  // -2 is used charger
                     {
                         gridItem.classList.add('used-charger');
                     } 
                     else 
                     {
-                        gridItem.classList.add('unused');
+                        gridItem.classList.add('unused'); // unused block
                     }
                     gridContainer.appendChild(gridItem);
                 }
             }
         }
-
+// function that loads the CSV
         function loadCSV() {
             fetch('output.csv')
                 .then(response => response.text())
@@ -87,11 +90,11 @@
                     createGrid(gridData);
                 })
                 .catch(error => {
-                    console.error('Error loading CSV file:', error);
+                    console.error('Error loading CSV file:', error); // error handling
                     alert('Error loading the CSV file.');
                 });
         }
-
+// function that parses the csv
         function parseCSV(csv) {
             const lines = csv.split('\n');
             const result = [];
